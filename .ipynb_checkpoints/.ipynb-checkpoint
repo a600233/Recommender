@@ -1,0 +1,446 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 79,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from spotlight.cross_validation import user_based_train_test_split\n",
+    "from spotlight.datasets.movielens import get_movielens_dataset\n",
+    "from spotlight.evaluation import rmse_score,mrr_score\n",
+    "from spotlight.factorization.explicit import ExplicitFactorizationModel\n",
+    "import pandas as pd\n",
+    "import numpy as np"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 95,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "ratings_df = pd.read_csv(\"ml-latest-small/ratings.csv\")\n",
+    "movies_df = pd.read_csv(\"ml-latest-small/movies.csv\")\n",
+    "\n",
+    "from collections import defaultdict\n",
+    "from itertools import count\n",
+    "\n",
+    "uid_map = defaultdict(count().__next__)\n",
+    "iid_map = defaultdict(count().__next__)\n",
+    "uids = np.array([uid_map[uid] for uid in ratings_df[\"userId\"].values ], dtype=np.int32)\n",
+    "iids = np.array([iid_map[iid] for iid in ratings_df[\"movieId\"].values ], dtype=np.int32)\n",
+    "\n",
+    "uid_rev_map = {v: k for k, v in uid_map.items()}\n",
+    "iid_rev_map = {v: k for k, v in iid_map.items()}\n",
+    "\n",
+    "ratings = ratings_df[\"rating\"].values.astype(np.float32)\n",
+    "timestamps = ratings_df[\"timestamp\"].values.astype(np.int32)\n",
+    "\n",
+    "from spotlight.interactions import Interactions\n",
+    "from spotlight.cross_validation import random_train_test_split\n",
+    "\n",
+    "dataset = Interactions(user_ids=uids,item_ids=iids,ratings=ratings,timestamps=timestamps)\n",
+    "\n",
+    "#lets initialise the seed, so that its repeatable and reproducible \n",
+    "train, test = random_train_test_split(dataset, test_percentage=0.2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 145,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "612"
+      ]
+     },
+     "execution_count": 145,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "dataset"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 97,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "<Interactions dataset (610 users x 9724 items x 80668 interactions)>"
+      ]
+     },
+     "execution_count": 97,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "train"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 98,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "<Interactions dataset (610 users x 9724 items x 20168 interactions)>"
+      ]
+     },
+     "execution_count": 98,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "test"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 104,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Inital memory usage was 0.180682 MB; Peak was 3.707094 MB; and difference is 3.526412 MB\n",
+      "The total time is 1.7039611339569092 seconds\n"
+     ]
+    }
+   ],
+   "source": [
+    "import tracemalloc\n",
+    "import time\n",
+    "\n",
+    "\n",
+    "tracemalloc.start()\n",
+    "model = ExplicitFactorizationModel(n_iter=1)\n",
+    "intial_time = time.time()\n",
+    "model.fit(train)\n",
+    "current, peak = tracemalloc.get_traced_memory()\n",
+    "\n",
+    "print(f\"Inital memory usage was {current / 10**6} MB; Peak was {peak / 10**6} MB; and difference is {(peak / 10**6) - (current / 10**6)} MB\")\n",
+    "print(f\"The total time is {time.time() - intial_time} seconds\")\n",
+    "\n",
+    "tracemalloc.stop()\n",
+    "#snapshot2 = tracemalloc.take_snapshot()\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 105,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[7.59008221e-04 7.33851473e-03 7.19412746e-04 4.46319955e-03\n",
+      " 2.35409026e-02 1.23229240e-03 4.08183822e-03 5.08694930e-03\n",
+      " 1.83550506e-03 4.55696132e-03 2.22319599e-03 1.73260897e-03\n",
+      " 1.02978924e-03 1.19380499e-02 2.62021880e-03 8.85705450e-03\n",
+      " 3.81087805e-03 2.08853888e-03 2.89672447e-03 1.44863662e-03\n",
+      " 1.36311180e-03 2.99521627e-03 8.60010680e-03 1.70113080e-03\n",
+      " 9.59534852e-03 2.16729832e-02 2.19034352e-02 3.35300004e-03\n",
+      " 3.46541536e-03 1.47907569e-03 2.25957890e-03 6.47591717e-03\n",
+      " 3.34356515e-03 1.80682490e-03 2.52770491e-03 1.28341238e-03\n",
+      " 1.53682136e-03 3.46137118e-02 4.35538883e-03 4.30123175e-03\n",
+      " 2.94537885e-03 2.31729812e-03 1.91317770e-03 1.25405699e-03\n",
+      " 1.75833976e-03 3.75015207e-02 4.92961348e-04 1.63368309e-03\n",
+      " 1.57880016e-03 6.61156607e-03 2.16087995e-03 1.68981011e-03\n",
+      " 3.02446439e-03 9.22594945e-03 2.19662057e-03 1.88868108e-02\n",
+      " 1.92022849e-03 4.07228663e-02 1.47022274e-03 4.22373719e-03\n",
+      " 6.65070195e-03 1.77674225e-03 2.89477774e-03 2.26992072e-03\n",
+      " 2.25005527e-03 3.39989479e-03 2.95463835e-03 1.97609217e-03\n",
+      " 1.54961468e-03 3.71233338e-03 1.60575755e-03 1.76781275e-01\n",
+      " 2.61778209e-03 1.88956400e-03 1.36060618e-03 6.66142576e-03\n",
+      " 5.77416692e-03 1.15478909e-02 4.30913212e-03 1.18516456e-03\n",
+      " 1.20944171e-01 8.07902702e-04 1.55623672e-02 2.49645780e-03\n",
+      " 3.66724757e-03 2.15763319e-03 1.08892027e-03 3.96152403e-03\n",
+      " 1.86061109e-03 1.12593323e-03 2.28277905e-03 1.65117890e-03\n",
+      " 2.18480872e-03 6.84990335e-02 1.19879284e-03 2.23797026e-03\n",
+      " 3.42778351e-03 1.54272010e-03 7.80397376e-03 3.91356498e-03\n",
+      " 5.16173125e-04 9.11280609e-03 2.32074467e-03 1.64838370e-03\n",
+      " 2.06160658e-03 1.05766140e-03 1.08816880e-02 1.73680034e-03\n",
+      " 1.92727721e-03 1.97353248e-03 2.29640409e-03 5.43953414e-03\n",
+      " 2.71764290e-03 2.77266181e-03 1.30655514e-03 3.87596871e-02\n",
+      " 1.25714632e-02 2.98464879e-03 2.27392275e-03 1.76425235e-03\n",
+      " 2.38111337e-02 1.67841467e-03 2.40530216e-03 1.02214081e-01\n",
+      " 3.47045145e-03 4.67042410e-02 2.56454788e-03 7.68012073e-03\n",
+      " 2.03542253e-03 7.10784314e-02 6.76614199e-02 3.07642445e-03\n",
+      " 1.77333404e-02 4.90243638e-03 1.63030232e-03 3.19921513e-03\n",
+      " 4.56853848e-03 4.56288768e-03 9.10380921e-04 2.07490504e-03\n",
+      " 2.51760699e-03 1.18127538e-01 1.84996750e-03 4.61537591e-03\n",
+      " 4.10078284e-02 1.60421409e-03 7.13342077e-04 4.45055925e-03\n",
+      " 2.09626599e-03 7.43066129e-03 1.00381077e-03 5.04387349e-03\n",
+      " 3.75423797e-03 1.76841218e-03 9.42635901e-04 3.47365671e-03\n",
+      " 5.12820513e-03 1.98042594e-04 1.80596540e-03 4.98493676e-03\n",
+      " 1.54714511e-03 8.87914777e-03 1.72858637e-03 3.45061405e-03\n",
+      " 2.79611064e-03 1.58745659e-03 2.56397175e-02 1.02650842e-03\n",
+      " 1.38817713e-01 7.60424282e-03 1.75351537e-03 8.00021096e-03\n",
+      " 3.02653709e-02 2.00154629e-03 8.54971356e-03 2.18315709e-03\n",
+      " 2.45916163e-03 1.27353081e-02 4.64429062e-02 1.54721009e-02\n",
+      " 6.02418356e-03 1.18869060e-02 1.15344648e-03 4.34771353e-04\n",
+      " 1.40105446e-03 1.13775822e-02 5.64015066e-03 3.44905126e-02\n",
+      " 1.37455461e-03 9.35692199e-04 1.65300546e-02 9.76297088e-03\n",
+      " 5.84453536e-04 2.48549460e-03 3.24953828e-03 1.70345200e-03\n",
+      " 1.62676667e-03 2.95207394e-03 1.59399189e-03 2.45679550e-03\n",
+      " 2.22783969e-03 1.19296124e-03 1.75968340e-03 3.79211339e-03\n",
+      " 1.79904802e-03 7.49475416e-04 5.47980615e-04 3.02654997e-03\n",
+      " 1.22032235e-03 1.11797675e-02 2.69496714e-03 1.96746919e-03\n",
+      " 2.61939110e-03 1.09552741e-02 4.38357430e-03 3.95714522e-03\n",
+      " 3.40331938e-03 2.15520312e-03 1.72131125e-03 5.15103278e-03\n",
+      " 2.26704339e-03 2.11958443e-03 5.03349347e-03 2.45054001e-03\n",
+      " 2.12907136e-03 2.14900193e-03 8.05771167e-04 7.01261456e-03\n",
+      " 6.92969553e-03 2.32026057e-02 1.11130610e-03 7.35969158e-03\n",
+      " 3.60282462e-03 5.90525159e-03 6.06453734e-04 1.18140638e-03\n",
+      " 9.61716454e-04 1.74621876e-03 3.57959828e-03 2.54584320e-03\n",
+      " 1.92475471e-01 2.14061274e-03 1.60881025e-02 1.48103054e-03\n",
+      " 1.39800952e-03 5.94317352e-03 4.17848925e-03 2.77979366e-03\n",
+      " 5.79591534e-04 6.13503104e-03 2.21426708e-03 1.00127068e-02\n",
+      " 3.64666223e-03 8.99554408e-04 1.97151379e-03 3.48793480e-03\n",
+      " 2.87783590e-03 1.78854886e-03 9.88961006e-03 1.52281234e-03\n",
+      " 3.89072730e-03 3.92553063e-03 1.62079104e-03 1.62134448e-03\n",
+      " 3.42126566e-03 1.91229731e-03 1.45578366e-03 2.64905147e-03\n",
+      " 9.06637687e-04 1.78667502e-03 3.84947546e-03 3.42688284e-03\n",
+      " 5.99527001e-03 4.42893550e-03 1.53662013e-03 3.44152222e-03\n",
+      " 8.19252975e-03 4.55759881e-03 2.53286522e-03 4.47503278e-03\n",
+      " 4.77055631e-02 4.55352709e-03 2.01082431e-03 2.12522565e-03\n",
+      " 2.32114063e-03 2.59534796e-03 7.98296368e-04 7.88354405e-03\n",
+      " 2.13105738e-03 1.57552771e-03 2.88210963e-03 2.67558640e-03\n",
+      " 2.28919751e-03 2.56569213e-03 8.60017444e-04 5.20983802e-03\n",
+      " 1.43458872e-03 1.98807157e-03 2.23813605e-03 3.84791395e-03\n",
+      " 1.41075894e-03 2.00246836e-03 2.45799300e-03 1.39669323e-03\n",
+      " 2.19730845e-03 2.24335469e-03 4.38173203e-03 4.00751279e-03\n",
+      " 8.60021629e-04 1.40449060e-03 1.76455220e-03 2.36372648e-03\n",
+      " 7.58864787e-03 1.38720549e-03 5.22402179e-03 1.57956040e-03\n",
+      " 3.35146679e-03 8.16239335e-04 1.02517752e-01 3.36509704e-03\n",
+      " 4.92509829e-03 1.08015104e-03 1.12987356e-03 3.43767257e-03\n",
+      " 7.90757171e-04 2.72341612e-03 7.10379801e-03 4.58731395e-03\n",
+      " 3.05048207e-03 3.58681115e-03 4.21254481e-04 3.16987679e-03\n",
+      " 2.67637175e-02 5.82058205e-03 3.77356619e-03 3.57680514e-03\n",
+      " 2.23386924e-03 5.73327020e-02 2.15997865e-03 7.03789700e-04\n",
+      " 2.67884003e-03 2.21580838e-03 6.84004242e-03 2.87052721e-03\n",
+      " 3.74110106e-03 3.44908380e-03 1.22966603e-02 3.79812450e-03\n",
+      " 1.54496877e-03 2.07014243e-03 5.15979956e-02 1.64147480e-03\n",
+      " 8.64328667e-04 8.25827654e-03 2.54433842e-03 8.26947318e-03\n",
+      " 2.20630539e-03 1.70354526e-03 1.03374519e-03 2.74013947e-03\n",
+      " 4.61520101e-03 1.99066225e-02 2.85536946e-03 2.28230656e-03\n",
+      " 1.77376171e-03 1.75886182e-03 2.91115195e-03 8.58957709e-03\n",
+      " 9.10341165e-04 5.32147580e-03 5.01457885e-03 3.05586799e-03\n",
+      " 5.19643298e-04 3.29474274e-03 1.51044230e-03 3.55402886e-03\n",
+      " 4.37704300e-02 1.81146043e-03 2.65888253e-03 2.96274404e-03\n",
+      " 2.03164031e-03 1.25341887e-03 9.33396545e-03 1.43356846e-03\n",
+      " 3.09251241e-03 5.85266004e-04 1.53961418e-03 5.34276831e-03\n",
+      " 5.23154477e-03 2.47172474e-03 2.63352848e-03 1.21596772e-02\n",
+      " 2.26461677e-02 2.24730275e-03 1.13435647e-03 2.82406839e-03\n",
+      " 1.25950657e-02 4.36038290e-03 1.80982850e-03 3.52549224e-02\n",
+      " 1.30865222e-03 1.43295100e-02 1.96989021e-03 8.75656743e-04\n",
+      " 4.30471050e-03 1.26294603e-03 4.03329585e-03 7.12885937e-03\n",
+      " 2.76165018e-03 2.93732772e-03 2.53039621e-03 1.65145254e-03\n",
+      " 4.26504770e-03 6.88241407e-03 3.78356195e-03 1.49833609e-03\n",
+      " 3.04040890e-03 1.02514671e-03 3.06273629e-03 1.70371989e-03\n",
+      " 9.14784460e-03 8.89515637e-04 3.10685864e-03 1.85643573e-03\n",
+      " 7.65934513e-04 2.91818720e-03 5.45020694e-03 1.57488506e-03\n",
+      " 2.00378072e-01 2.08559636e-03 1.27123985e-02 2.60798453e-03\n",
+      " 1.96781636e-03 1.14789518e-02 2.98504814e-03 1.49959422e-03\n",
+      " 1.86062248e-02 9.14886825e-03 2.39274640e-03 1.11891170e-03\n",
+      " 1.58337782e-03 6.99555804e-03 6.40200900e-03 3.29203989e-02\n",
+      " 3.14391251e-02 1.47634407e-03 3.27082798e-03 1.96050100e-03\n",
+      " 9.13059987e-03 2.51315861e-03 2.24707623e-03 2.86977436e-03\n",
+      " 1.57672352e-01 3.37093207e-03 1.19141671e-03 9.49255652e-03\n",
+      " 1.35669875e-03 1.73760005e-03 1.21535432e-01 1.68976969e-03\n",
+      " 1.17415004e-03 1.93830783e-03 2.10444408e-03 3.45189024e-03\n",
+      " 3.81390035e-03 4.32345971e-02 5.37275887e-03 2.77849597e-02\n",
+      " 2.22675889e-03 2.01896164e-03 2.27151474e-03 2.86432897e-03\n",
+      " 2.71448589e-03 7.39389002e-03 2.88477674e-03 1.34043093e-03\n",
+      " 2.96156710e-03 3.10907815e-03 7.30713540e-04 1.55509336e-03\n",
+      " 2.64856169e-03 1.45534931e-03 5.38266099e-02 1.82647448e-02\n",
+      " 7.87975831e-03 6.36119462e-03 1.91828115e-03 3.95968177e-03\n",
+      " 1.06389558e-03 1.60077227e-03 1.16598628e-03 6.14774117e-03\n",
+      " 1.86290977e-03 3.93482627e-03 5.08759291e-03 2.71995725e-02\n",
+      " 7.01405311e-03 2.07760536e-03 4.91722465e-03 6.42377052e-03\n",
+      " 2.32226737e-03 1.26493881e-03 9.29880543e-04 6.53429642e-04\n",
+      " 1.37853414e-02 6.85774559e-03 1.90246904e-03 2.25984987e-03\n",
+      " 1.86830239e-03 4.88973837e-02 2.64774630e-03 3.11938302e-03\n",
+      " 7.84298781e-03 4.39592855e-03 9.33542824e-03 9.03961647e-04\n",
+      " 8.85715787e-04 1.41330568e-03 3.74456072e-03 2.81318584e-03\n",
+      " 1.96858004e-03 4.60208250e-03 1.94510219e-03 2.01727215e-03\n",
+      " 2.91231100e-03 1.31957527e-02 3.33496556e-03 1.49136030e-01\n",
+      " 1.41441631e-03 1.44903405e-03 4.03632731e-03 1.03358177e-03\n",
+      " 8.35371764e-04 1.07578064e-02 6.15131772e-03 1.06225430e-03\n",
+      " 1.72486554e-03 3.34364634e-03 1.11194442e-02 2.61600955e-03\n",
+      " 2.30564684e-03 1.32275132e-03 2.56974402e-04 6.09784202e-04\n",
+      " 5.57850186e-02 2.59740260e-03 1.15372381e-02 5.59307657e-03\n",
+      " 2.06715123e-03 4.64824835e-03 3.18803264e-03 6.41407713e-03\n",
+      " 4.21820618e-03 1.17400389e-03 5.53076760e-03 1.62723632e-03\n",
+      " 3.86365445e-03 1.86151844e-03 2.06435673e-03 1.47914643e-03\n",
+      " 5.84451517e-04 8.18218684e-04 1.88365119e-02 4.22925360e-03\n",
+      " 1.13659152e-03 2.30268482e-02 2.23783606e-02 1.02828286e-02\n",
+      " 2.51754825e-04 4.21875075e-02 3.57177135e-03 2.05863342e-02\n",
+      " 1.28548670e-03 4.11977649e-03 1.49923349e-02 1.13118256e-03\n",
+      " 1.84352752e-03 8.68158270e-03 1.40463207e-03 3.25451197e-03\n",
+      " 1.26293277e-03 7.33475463e-03 5.15694930e-03 3.29558617e-03\n",
+      " 1.21532082e-03 8.72349830e-03 4.07634395e-02 2.86095240e-03\n",
+      " 1.39183879e-03 4.52655983e-02 2.25972209e-03 1.18026411e-03\n",
+      " 9.85438583e-04 1.24527325e-03 4.15169315e-03 1.01054076e-03\n",
+      " 2.31904305e-03 1.57572283e-03 3.54350041e-03 5.29619697e-03\n",
+      " 1.49108645e-03 2.82328357e-03 8.17664328e-04 2.04673600e-03\n",
+      " 2.43196881e-03 1.76890312e-03 4.09338121e-03 4.93300560e-03]\n",
+      "Inital memory usage was 0.054191 MB; Peak was 0.859552 MB; and difference is 0.805361 MB\n",
+      "The total time is 1.3038501739501953 seconds\n"
+     ]
+    }
+   ],
+   "source": [
+    "tracemalloc.start()\n",
+    "\n",
+    "\n",
+    "tracemalloc.start()\n",
+    "intial_time = time.time()\n",
+    "print(mrr_score(model, test))\n",
+    "current, peak = tracemalloc.get_traced_memory()\n",
+    "\n",
+    "print(f\"Inital memory usage was {current / 10**6} MB; Peak was {peak / 10**6} MB; and difference is {(peak / 10**6) - (current / 10**6)} MB\")\n",
+    "print(f\"The total time is {time.time() - intial_time} seconds\")\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 106,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Root Mean Squared Error is 1.08253812789917\n",
+      "Inital memory usage was 0.076533 MB; Peak was 0.859552 MB; and difference is 0.783019 MB\n",
+      "The total time is 0.008342981338500977 seconds\n"
+     ]
+    }
+   ],
+   "source": [
+    "tracemalloc.start()\n",
+    "\n",
+    "\n",
+    "tracemalloc.start()\n",
+    "intial_time = time.time()\n",
+    "print(f\"Root Mean Squared Error is {rmse_score(model, test)}\")\n",
+    "current, peak = tracemalloc.get_traced_memory()\n",
+    "\n",
+    "print(f\"Inital memory usage was {current / 10**6} MB; Peak was {peak / 10**6} MB; and difference is {(peak / 10**6) - (current / 10**6)} MB\")\n",
+    "print(f\"The total time is {time.time() - intial_time} seconds\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 147,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "90752\n",
+      "Root Mean Squared Error is 1.011805772781372\n",
+      "Root Mean Squared Error is 1.0614092350006104\n",
+      "Root Mean Squared Error is 1.110275149345398\n",
+      "Root Mean Squared Error is 1.218490481376648\n",
+      "Root Mean Squared Error is 1.3490108251571655\n",
+      "Root Mean Squared Error is 1.6921112537384033\n",
+      "Root Mean Squared Error is 2.150165319442749\n",
+      "Root Mean Squared Error is 2.9755358695983887\n",
+      "Root Mean Squared Error is 3.3968894481658936\n"
+     ]
+    }
+   ],
+   "source": [
+    "# scikit-learn bootstrap\n",
+    "from sklearn.utils import resample\n",
+    "# data sample\n",
+    "\n",
+    "\n",
+    "\n",
+    "\n",
+    "# prepare bootstrap sample\n",
+    "for i in range(9,0,-1):\n",
+    "    boot_uid = resample(uids, replace=True, n_samples=int(uids.size * i /10), random_state=1)\n",
+    "    boot_iid = resample(iids, replace=True, n_samples=int(uids.size * i /10), random_state=1)\n",
+    "    boot_ratings = resample(ratings, replace=True, n_samples=int(uids.size * i /10), random_state=1)\n",
+    "    boot_timestamps = resample(timestamps, replace=True, n_samples=int(uids.size * i /10), random_state=1)\n",
+    "    dataset_boot = Interactions(user_ids=boot_uid,item_ids=boot_iid,ratings=boot_ratings,timestamps=boot_timestamps)\n",
+    "\n",
+    "    #lets initialise the seed, so that its repeatable and reproducible \n",
+    "    train, test = random_train_test_split(dataset_boot, test_percentage=0.2)\n",
+    "    #tracemalloc.start()\n",
+    "    model = ExplicitFactorizationModel(n_iter=1)\n",
+    "    #intial_time = time.time()\n",
+    "    model.fit(train)\n",
+    "    print(f\"Root Mean Squared Error is {rmse_score(model, test)}\")\n",
+    "    #current, peak = tracemalloc.get_traced_memory()\n",
+    "\n",
+    "    #print(f\"Inital memory usage was {current / 10**6} MB; Peak was {peak / 10**6} MB; and difference is {(peak / 10**6) - (current / 10**6)} MB\")\n",
+    "    #print(f\"The total time is {time.time() - intial_time} seconds\")\n",
+    "\n",
+    "    #tracemalloc.stop()\n",
+    "\n",
+    "\n",
+    "    \n",
+    "    \n",
+    "\n",
+    "\n",
+    "\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.6.10"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
