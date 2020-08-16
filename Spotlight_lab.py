@@ -1,25 +1,23 @@
 #!/usr/bin/env python
 # coding: utf-8
-
-# In[1]:
-
-
 from spotlight.cross_validation import user_based_train_test_split
 from spotlight.datasets.movielens import get_movielens_dataset
-from spotlight.evaluation import rmse_score,mrr_score
+from spotlight.evaluation import rmse_score,mrr_score,precision_recall_score,sequence_mrr_score
 from spotlight.factorization.explicit import ExplicitFactorizationModel
 import pandas as pd
 import numpy as np
-
-
-# In[2]:
+import resource
+import os
+from collections import defaultdict
+from itertools import count
+from spotlight.interactions import Interactions
+from spotlight.cross_validation import random_train_test_split
+from sklearn.utils import resample
+from multiprocessing import Process, Lock, cpu_count, active_children, Value
 
 
 ratings_df = pd.read_csv("ml-latest-small/ratings.csv")
 movies_df = pd.read_csv("ml-latest-small/movies.csv")
-
-from collections import defaultdict
-from itertools import count
 
 uid_map = defaultdict(count().__next__)
 iid_map = defaultdict(count().__next__)
@@ -32,115 +30,99 @@ iid_rev_map = {v: k for k, v in iid_map.items()}
 ratings = ratings_df["rating"].values.astype(np.float32)
 timestamps = ratings_df["timestamp"].values.astype(np.int32)
 
-from spotlight.interactions import Interactions
-from spotlight.cross_validation import random_train_test_split
-
 dataset = Interactions(user_ids=uids,item_ids=iids,ratings=ratings,timestamps=timestamps)
 
-#lets initialise the seed, so that its repeatable and reproducible 
-train, test = random_train_test_split(dataset, test_percentage=0.2)
 
 
-
-
-
-import os
-print(os.getpid())
-
-
-# In[8]:
-
-
-import tracemalloc
-import time
-
-
-#tracemalloc.start()
-model = ExplicitFactorizationModel(n_iter=1)
-intial_time = time.time()
-model.fit(train)
-#current, peak = tracemalloc.get_traced_memory()
-
-#print(f"Inital memory usage was {current / 10**6} MB; Peak was {peak / 10**6} MB; and difference is {(peak / 10**6) - (current / 10**6)} MB")
-print(f"The total time is {time.time() - intial_time} seconds")
-
-tracemalloc.stop()
-#snapshot2 = tracemalloc.take_snapshot()
-
-
-# In[7]:
-
-
-#tracemalloc.start()
-intial_time = time.time()
-print(mrr_score(model, test))
-#current, peak = tracemalloc.get_traced_memory()
-print(os.getpid())
-#print(f"Inital memory usage was {current / 10**6} MB; Peak was {peak / 10**6} MB; and difference is {(peak / 10**6) - (current / 10**6)} MB")
-print(f"The total time is {time.time() - intial_time} seconds")
-
-
-# In[106]:
-
-
-tracemalloc.start()
-
-
-tracemalloc.start()
-intial_time = time.time()
-print(f"Root Mean Squared Error is {rmse_score(model, test)}")
-current, peak = tracemalloc.get_traced_memory()
-
-print(f"Inital memory usage was {current / 10**6} MB; Peak was {peak / 10**6} MB; and difference is {(peak / 10**6) - (current / 10**6)} MB")
-print(f"The total time is {time.time() - intial_time} seconds")
-
-
-# In[8]:
-
-
-# scikit-learn bootstrap
-from sklearn.utils import resample
-# data sample
-
+resample_train_cbn = []
+resample_test_cbn = []
 
 # prepare bootstrap sample
 for i in range(10,0,-1):
-    boot_uid = resample(uids,  n_samples=int(uids.size * i /10), random_state=1)
-    boot_iid = resample(iids, n_samples=int(iids.size * i /10), random_state=1)
-    boot_ratings = resample(ratings,  n_samples=int(ratings.size * i /10), random_state=1)
-    boot_timestamps = resample(timestamps,  n_samples=int(timestamps.size * i /10), random_state=1)
-    dataset_boot = Interactions(user_ids=boot_uid,item_ids=boot_iid,ratings=boot_ratings,timestamps=boot_timestamps)
+    from sklearn.utils import resample
+    boot_uid = resample(uids, n_samples=int(uids.size * i / 10), random_state=1)
+    boot_iid = resample(iids, n_samples=int(iids.size * i / 10), random_state=1)
+#     print(boot_uid.size)
+    int_uid = []
+    int_iid = []
+    int_ratings = []
+    int_timestamps = []
+    
+    temp_sample = ratings_df[ratings_df['userId'].isin(boot_uid)]
+    final_sample = temp_sample[temp_sample['movieId'].isin(boot_iid)]
+    #print(final_sample)
+    int_uid = np.array([uid_map[uid] for uid in final_sample["userId"].values ], dtype=np.int32)
+    int_iid = np.array([iid_map[iid] for iid in final_sample["movieId"].values ], dtype=np.int32)
+    int_ratings = final_sample['rating'].values.astype(np.float32)
+    int_timestamps = final_sample['timestamp'].values.astype(np.int32)
 
-    #lets initialise the seed, so that its repeatable and reproducible 
+    dataset_boot = Interactions(user_ids=int_uid,item_ids=int_uid,ratings=int_ratings,timestamps=int_timestamps)
     train, test = random_train_test_split(dataset_boot, test_percentage=0.2)
-    #tracemalloc.start()
+    resample_train_cbn.append(train)
+    resample_test_cbn.append(test)
+
+
+def train_method(num_1,num_2):
+    for line in open("/proc/" + str(os.getpid()) + "/status"):
+        print(line)
+    print(f"PID is {os.getpid()}")
+#     for line in open("/proc/%d/status" % os.getpid()).readlines():
+#         print(line)
+# #         if line.startswith("State:"):
+# #             return line.split(":",1)[1].strip().split(' ')[0]
+
     model = ExplicitFactorizationModel(n_iter=1)
-    #intial_time = time.time()
-    model.fit(train)
-    print(f"Root Mean Squared Error is {rmse_score(model, test)}")
-    #current, peak = tracemalloc.get_traced_memory()
+    intial_time =  resource.getrusage(resource.RUSAGE_SELF); 
+    model.fit(resample_train_cbn[num_1])
+    final_time = resource.getrusage(resource.RUSAGE_SELF); 
+    overall_time_s = final_time.ru_stime - intial_time.ru_stime
+    overall_time_u = final_time.ru_utime - intial_time.ru_utime
+    for line in open("/proc/" + str(os.getpid()) + "/status"):
+        print(line)
+    print(f"This process‘s system running time is {overall_time_s}")
+    print(f"This process‘s user running time is {overall_time_u}")
+    print(f"Root Mean Squared Error is {rmse_score(model, resample_test_cbn[num_2])}")
+    print(f"Root Mean Squared Error is {precision_recall_score(model, resample_test_cbn[num_2])}")
+    print("----------------------------------------------------------")
 
-    #print(f"Inital memory usage was {current / 10**6} MB; Peak was {peak / 10**6} MB; and difference is {(peak / 10**6) - (current / 10**6)} MB")
-    #print(f"The total time is {time.time() - intial_time} seconds")
-
-    #tracemalloc.stop()
 
 
+# train_method(0,0)
+
+if __name__ == '__main__':
     
+    p10 = Process(target=train_method, args=(0,0,))
+    p9 = Process(target=train_method, args=(1,1,))
+    p8 = Process(target=train_method, args=(2,2,))
+    p7 = Process(target=train_method, args=(3,3,))
+    p6 = Process(target=train_method, args=(4,4,))
+    p5 = Process(target=train_method, args=(5,5,))
+    p4 = Process(target=train_method, args=(6,6,))
+    p3 = Process(target=train_method, args=(7,7,))
+    p2 = Process(target=train_method, args=(8,8,))
+    p1 = Process(target=train_method, args=(9,9,))
     
+    p10.start()
+    p10.join()
+    p9.start()
+    p9.join()
+    p8.start()
+    p8.join()
+    p7.start()
+    p7.join()
+    p6.start()
+    p6.join()
+    p5.start()
+    p5.join()
+    p4.start()
+    p4.join()
+    p3.start()
+    p3.join()
+    p2.start()
+    p2.join()
+    p1.start()
+    p1.join()
 
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
+      
 
 
