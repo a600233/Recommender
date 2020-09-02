@@ -63,22 +63,32 @@ for i in range(10,0,-1):
 
 
 def train_method(num_1,num_2):
-    for line in open("/proc/" + str(os.getpid()) + "/status"):
-        print(line)
+    bfr = []
+    aft = []
+    vminf = []
+    
     print(f"PID is {os.getpid()}")
-#     for line in open("/proc/%d/status" % os.getpid()).readlines():
-#         print(line)
-# #         if line.startswith("State:"):
-# #             return line.split(":",1)[1].strip().split(' ')[0]
-
+    print("-------------------------before--------------------------------")
+    for line in open("/proc/" + str(os.getpid()) + "/status"):
+        if line.startswith("Vm"):
+            print(line)
+            vminf.append(line[:6].replace(":", ""))
+            bfr.append(int(line[9:-4]))
+            
     model = ExplicitFactorizationModel(n_iter=1)
     intial_time =  resource.getrusage(resource.RUSAGE_SELF); 
     model.fit(resample_train_cbn[num_1])
     final_time = resource.getrusage(resource.RUSAGE_SELF); 
     overall_time_s = final_time.ru_stime - intial_time.ru_stime
     overall_time_u = final_time.ru_utime - intial_time.ru_utime
-    for line in open("/proc/" + str(os.getpid()) + "/status"):
-        print(line)
+    print("-------------------------after--------------------------------")
+    for line1 in open("/proc/" + str(os.getpid()) + "/status"):
+        if line1.startswith("Vm"):
+            print(line1)
+            aft.append(int(line1[9:-4]))
+            
+    for i in range(len(bfr)):
+        print("The difference between "+vminf[i]+" is "+str(aft[i] - bfr[i]))
     print(f"This process‘s system running time is {overall_time_s}")
     print(f"This process‘s user running time is {overall_time_u}")
     print(f"Root Mean Squared Error is {rmse_score(model, resample_test_cbn[num_2])}")
