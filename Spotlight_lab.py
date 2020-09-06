@@ -66,72 +66,86 @@ def train_method(num_1,num_2):
     bfr = []
     aft = []
     vminf = []
+    pid_itr = os.getpid()
+    print(f"PID is {pid_itr}")
+    # print("-------------------------before--------------------------------")
     
-    print(f"PID is {os.getpid()}")
-    print("-------------------------before--------------------------------")
-    for line in open("/proc/" + str(os.getpid()) + "/status"):
+    for line in open("/proc/" + str(pid_itr) + "/status"):
         if line.startswith("Vm"):
-            print(line)
+            # print(line)
             vminf.append(line[:6].replace(":", ""))
             bfr.append(int(line[9:-4]))
             
-    model = ExplicitFactorizationModel(n_iter=1)
+    model = ExplicitFactorizationModel(loss='regression',embedding_dim=32,n_iter=10,batch_size=256,l2=0.0,learning_rate=8e-2)
+    #print(1)
     intial_time =  resource.getrusage(resource.RUSAGE_SELF); 
+    #print(2)
     model.fit(resample_train_cbn[num_1])
+    #print(3)
     final_time = resource.getrusage(resource.RUSAGE_SELF); 
+    #print(4)
     overall_time_s = final_time.ru_stime - intial_time.ru_stime
+    #print(5)
     overall_time_u = final_time.ru_utime - intial_time.ru_utime
-    print("-------------------------after--------------------------------")
-    for line1 in open("/proc/" + str(os.getpid()) + "/status"):
+    # print(pid_itr)
+    #print("-------------------------after--------------------------------")
+    for line1 in open("/proc/" + str(pid_itr) + "/status"):
         if line1.startswith("Vm"):
-            print(line1)
+            # print(line1)
             aft.append(int(line1[9:-4]))
             
     for i in range(len(bfr)):
-        print("The difference between "+vminf[i]+" is "+str(aft[i] - bfr[i]))
+        print("The difference of "+vminf[i]+" is "+str(aft[i] - bfr[i]))
     print(f"This process‘s system running time is {overall_time_s}")
     print(f"This process‘s user running time is {overall_time_u}")
     print(f"Root Mean Squared Error is {rmse_score(model, resample_test_cbn[num_2])}")
-    print(f"Root Mean Squared Error is {precision_recall_score(model, resample_test_cbn[num_2])}")
-    print("----------------------------------------------------------")
+    print(f"Mean Reciprocal Rank is {mrr_score(model, resample_test_cbn[num_2])}\n")    
+    print(f"Precision and Recall Score is {precision_recall_score(model, resample_test_cbn[num_2])}")
+    print("---------------------------------------------------------------------------------\n")
 
 
 
 # train_method(0,0)
 
 if __name__ == '__main__':
+    for a in range(10):
+        print(f"This is {10-a}0% ")
+        p = Process(target=train_method, args=(a,a,))
+        p.start()
+        p.join()
     
-    p10 = Process(target=train_method, args=(0,0,))
-    p9 = Process(target=train_method, args=(1,1,))
-    p8 = Process(target=train_method, args=(2,2,))
-    p7 = Process(target=train_method, args=(3,3,))
-    p6 = Process(target=train_method, args=(4,4,))
-    p5 = Process(target=train_method, args=(5,5,))
-    p4 = Process(target=train_method, args=(6,6,))
-    p3 = Process(target=train_method, args=(7,7,))
-    p2 = Process(target=train_method, args=(8,8,))
-    p1 = Process(target=train_method, args=(9,9,))
     
-    p10.start()
-    p10.join()
-    p9.start()
-    p9.join()
-    p8.start()
-    p8.join()
-    p7.start()
-    p7.join()
-    p6.start()
-    p6.join()
-    p5.start()
-    p5.join()
-    p4.start()
-    p4.join()
-    p3.start()
-    p3.join()
-    p2.start()
-    p2.join()
-    p1.start()
-    p1.join()
+    # p10 = Process(target=train_method, args=(0,0,))
+    # p9 = Process(target=train_method, args=(1,1,))
+    # p8 = Process(target=train_method, args=(2,2,))
+    # p7 = Process(target=train_method, args=(3,3,))
+    # p6 = Process(target=train_method, args=(4,4,))
+    # p5 = Process(target=train_method, args=(5,5,))
+    # p4 = Process(target=train_method, args=(6,6,))
+    # p3 = Process(target=train_method, args=(7,7,))
+    # p2 = Process(target=train_method, args=(8,8,))
+    # p1 = Process(target=train_method, args=(9,9,))
+    
+    # p10.start()
+    # p10.join()
+    # p9.start()
+    # p9.join()
+    # p8.start()
+    # p8.join()
+    # p7.start()
+    # p7.join()
+    # p6.start()
+    # p6.join()
+    # p5.start()
+    # p5.join()
+    # p4.start()
+    # p4.join()
+    # p3.start()
+    # p3.join()
+    # p2.start()
+    # p2.join()
+    # p1.start()
+    # p1.join()
 
       
 
