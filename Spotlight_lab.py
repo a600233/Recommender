@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import resource
 import os
+import csv
 from collections import defaultdict
 from itertools import count
 from spotlight.interactions import Interactions
@@ -60,52 +61,73 @@ for i in range(10,0,-1):
     train, test = random_train_test_split(dataset_boot, test_percentage=0.2)
     resample_train_cbn.append(train)
     resample_test_cbn.append(test)
+    
+vminf = []
+for line in open("/proc/" + str(os.getpid()) + "/status"):
+    if line.startswith("Vm"):
+        vminf.append(line[:6].replace(":", ""))    
+title_r=[]
+title_r.append('')
+title_r.append('PID')
+for i in range(len(vminf)):
+    title_r.append(vminf[i])
+title_r.append('System running time')
+title_r.append('User running time')
+title_r.append('RMSE')
+title_r.append('MRR')
+title_r.append('Precision & Recall')
 
+with open("result_lr_8e.csv","w") as f:
+    title_writer = csv.writer(f)       
+    title_writer.writerow(title_r)
 
 def train_method(num_1,num_2):
     bfr = []
-    aft = []
-    vminf = []
+    aft = []   
     pid_itr = os.getpid()
     print(f"PID is {pid_itr}")
-    # print("-------------------------before--------------------------------")
     
     for line in open("/proc/" + str(pid_itr) + "/status"):
         if line.startswith("Vm"):
             # print(line)
-            vminf.append(line[:6].replace(":", ""))
             bfr.append(int(line[9:-4]))
             
     model = ExplicitFactorizationModel(loss='regression',embedding_dim=32,n_iter=10,batch_size=256,l2=0.0,learning_rate=8e-2)
-    #print(1)
     intial_time =  resource.getrusage(resource.RUSAGE_SELF); 
-    #print(2)
     model.fit(resample_train_cbn[num_1])
-    #print(3)
     final_time = resource.getrusage(resource.RUSAGE_SELF); 
-    #print(4)
     overall_time_s = final_time.ru_stime - intial_time.ru_stime
-    #print(5)
     overall_time_u = final_time.ru_utime - intial_time.ru_utime
-    # print(pid_itr)
-    #print("-------------------------after--------------------------------")
+
     for line1 in open("/proc/" + str(pid_itr) + "/status"):
         if line1.startswith("Vm"):
             # print(line1)
             aft.append(int(line1[9:-4]))
-            
+    
+    result=[]
+    result.append(f"{10-num_1}0% Sample")
+    result.append(pid_itr)
     for i in range(len(bfr)):
-        print("The difference of "+vminf[i]+" is "+str(aft[i] - bfr[i]))
-    print(f"This process‘s system running time is {overall_time_s}")
-    print(f"This process‘s user running time is {overall_time_u}")
-    print(f"Root Mean Squared Error is {rmse_score(model, resample_test_cbn[num_2])}")
-    print(f"Mean Reciprocal Rank is {mrr_score(model, resample_test_cbn[num_2])}\n")    
-    print(f"Precision and Recall Score is {precision_recall_score(model, resample_test_cbn[num_2])}")
-    print("---------------------------------------------------------------------------------\n")
+        result.append(aft[i] - bfr[i])
+    result.append(overall_time_s)
+    result.append(overall_time_u)
+    result.append(rmse_score(model, resample_test_cbn[num_2]))
+    result.append(mrr_score(model, resample_test_cbn[num_2]))
+    result.append(precision_recall_score(model, resample_test_cbn[num_2]))
+                  
+    with open("result_lr_8e.csv","a",newline="") as f:
+        result_writer = csv.writer(f)       
+        result_writer.writerow(result)
 
+    # for i in range(len(bfr)):
+    #     print("The difference of "+vminf[i]+" is "+str(aft[i] - bfr[i]))
+    # print(f"This process‘s system running time is {overall_time_s}")
+    # print(f"This process‘s user running time is {overall_time_u}")
+    # print(f"Root Mean Squared Error is {rmse_score(model, resample_test_cbn[num_2])}")
+    # print(f"Mean Reciprocal Rank is {mrr_score(model, resample_test_cbn[num_2])}\n")    
+    # print(f"Precision and Recall Score is {precision_recall_score(model, resample_test_cbn[num_2])}")
+    # print("---------------------------------------------------------------------------------\n")
 
-
-# train_method(0,0)
 
 if __name__ == '__main__':
     for a in range(10):
