@@ -77,7 +77,7 @@ title_r.append('RMSE')
 title_r.append('MRR')
 title_r.append('Precision & Recall')
 
-with open("result_lr_8e.csv","w") as f:
+with open("result_bst.csv","w") as f:
     title_writer = csv.writer(f)       
     title_writer.writerow(title_r)
 
@@ -92,7 +92,7 @@ def train_method(num_1,num_2):
             # print(line)
             bfr.append(int(line[9:-4]))
             
-    model = ExplicitFactorizationModel(loss='regression',embedding_dim=32,n_iter=10,batch_size=256,l2=0.0,learning_rate=8e-2)
+    model = ExplicitFactorizationModel(loss='poisson',embedding_dim=16,n_iter=40,batch_size=512,l2=0.0,learning_rate=4e-2)
     intial_time =  resource.getrusage(resource.RUSAGE_SELF); 
     model.fit(resample_train_cbn[num_1])
     final_time = resource.getrusage(resource.RUSAGE_SELF); 
@@ -112,18 +112,19 @@ def train_method(num_1,num_2):
     result.append(overall_time_s)
     result.append(overall_time_u)
     result.append(rmse_score(model, resample_test_cbn[num_2]))
-    result.append(mrr_score(model, resample_test_cbn[num_2]))
-    result.append(precision_recall_score(model, resample_test_cbn[num_2]))
+    # result.append(mrr_score(model, resample_test_cbn[num_2]))
+    # result.append(precision_recall_score(model, resample_test_cbn[num_2]))
                   
-    with open("result_lr_8e.csv","a",newline="") as f:
+    with open("result_bst.csv","a",newline="") as f:
         result_writer = csv.writer(f)       
         result_writer.writerow(result)
 
-    # for i in range(len(bfr)):
-    #     print("The difference of "+vminf[i]+" is "+str(aft[i] - bfr[i]))
-    # print(f"This process‘s system running time is {overall_time_s}")
-    # print(f"This process‘s user running time is {overall_time_u}")
-    # print(f"Root Mean Squared Error is {rmse_score(model, resample_test_cbn[num_2])}")
+    for i in range(len(bfr)):
+        print("The difference of "+vminf[i]+" is "+str(aft[i] - bfr[i]))
+    print(f"This process‘s system running time is {overall_time_s}")
+    print(f"This process‘s user running time is {overall_time_u}")
+    print(f"This process‘s CPU time is {overall_time_u*0.000001+overall_time_s}")
+    print(f"Root Mean Squared Error is {rmse_score(model, resample_test_cbn[num_2])}")
     # print(f"Mean Reciprocal Rank is {mrr_score(model, resample_test_cbn[num_2])}\n")    
     # print(f"Precision and Recall Score is {precision_recall_score(model, resample_test_cbn[num_2])}")
     # print("---------------------------------------------------------------------------------\n")
@@ -136,39 +137,3 @@ if __name__ == '__main__':
         p.start()
         p.join()
     
-    
-    # p10 = Process(target=train_method, args=(0,0,))
-    # p9 = Process(target=train_method, args=(1,1,))
-    # p8 = Process(target=train_method, args=(2,2,))
-    # p7 = Process(target=train_method, args=(3,3,))
-    # p6 = Process(target=train_method, args=(4,4,))
-    # p5 = Process(target=train_method, args=(5,5,))
-    # p4 = Process(target=train_method, args=(6,6,))
-    # p3 = Process(target=train_method, args=(7,7,))
-    # p2 = Process(target=train_method, args=(8,8,))
-    # p1 = Process(target=train_method, args=(9,9,))
-    
-    # p10.start()
-    # p10.join()
-    # p9.start()
-    # p9.join()
-    # p8.start()
-    # p8.join()
-    # p7.start()
-    # p7.join()
-    # p6.start()
-    # p6.join()
-    # p5.start()
-    # p5.join()
-    # p4.start()
-    # p4.join()
-    # p3.start()
-    # p3.join()
-    # p2.start()
-    # p2.join()
-    # p1.start()
-    # p1.join()
-
-      
-
-

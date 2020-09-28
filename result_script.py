@@ -28,17 +28,23 @@ for i in file_names:
             vm_value.append(int(result_list[1][i]))
             vm_name.append(result_list[0][i])
             
-    # plt.figure(figsize=(15,6))
-    # plt.bar(vm_name,vm_value,color='skyblue') 
-    # plt.title(f"The difference of Virtual Memory {file_each}")
-    # for a,b in zip(vm_name,vm_value):
-    #     plt.text(a,b,'%.0f'%b,ha='center',va='bottom',fontsize=7)
-    # plt.ylabel("KB")   
-    # plt.show()
+    plt.figure(figsize=(15,6))
+    plt.bar(vm_name,vm_value,color='skyblue') 
+    plt.title(f"The difference of Virtual Memory {file_each}")
+    for a,b in zip(vm_name,vm_value):
+        plt.text(a,b,'%.0f'%b,ha='center',va='bottom',fontsize=7)
+    plt.ylabel("KB") 
+    # if not os.path.exists(f'./result_itself/{file_each}'):
+    #     os.makedirs(f'./result_itself/{file_each}')
+    plt.savefig(f'./result_itself_div/VM/{file_each}_VM.png')
+    plt.show()
+    
+
     
     time_name = []
     sys_runtime = []
     user_runtime = []
+    cpu_time = []
     sample_name = []
     RMSE_value = []
     sum_mrr = 0
@@ -49,44 +55,56 @@ for i in file_names:
     for j in range(1,11):
         sys_runtime.append(float(result_list[j][14]))
         user_runtime.append(float(result_list[j][15]))
-        RMSE_value.append(float(result_list[j][16]))
+        cpu_time.append(float( result_list[j][16]))
+        print(cpu_time)
+        RMSE_value.append(float(result_list[j][17]))
         sample_name.append(result_list[j][0][:-7])
-        print(float(list(result_list[j][17])))
+        
         # for k in range(len(result_list[j][17])):
         #     print(result_list[j][17][k])
-        #     sum_mrr += float(result_list[j][17][k])
+        #     sum_mrr += float(result_list[j][17][1:-1][k])
         # avg_mrr.append(sum_mrr/len(result_list[j][17]))
         # print(avg_mrr)
-    # plt.figure(dpi=128,figsize=(10,6))
-    # plt.plot(sample_name, sys_runtime,c='red')
-    # plt.title(f"System Running Time - {file_each}")
-    # plt.xlabel('Sample',fontsize=16)
-    # plt.ylabel('Seconds',fontsize=16)
-    # plt.show()
+    plt.figure(dpi=500,figsize=(10,6))
+    plt.plot(sample_name, sys_runtime,c='red')
+    plt.title(f"System Running Time - {file_each}")
+    plt.xlabel('Sample',fontsize=16)
+    plt.ylabel('Seconds',fontsize=16)
+    # if not os.path.exists(f'./result_itself/{file_each}'):
+    #     os.makedirs(f'./result_itself/{file_each}')
+    plt.savefig(f'./result_itself_div/sys_time/{file_each}_sys_time.png')
+    plt.show()
     
-    # plt.figure(dpi=128,figsize=(10,6))
-    # plt.plot(sample_name, user_runtime,c='blue')
-    # plt.title(f"User Running Time - {file_each}")
-    # plt.xlabel('Sample',fontsize=16)
-    # plt.ylabel('Seconds',fontsize=16)
-    # plt.show()
+    plt.figure(dpi=500,figsize=(10,6))
+    plt.plot(sample_name, user_runtime,c='blue')
+    plt.title(f"User Running Time - {file_each}")
+    plt.xlabel('Sample',fontsize=16)
+    plt.ylabel('Microseconds',fontsize=16)
+    if not os.path.exists(f'./result_itself/{file_each}'):
+        os.makedirs(f'./result_itself/{file_each}')
+    plt.savefig(f'./result_itself_div/user_time/{file_each}_user_time.png')
+    plt.show()
     
-    # plt.figure(dpi=128,figsize=(10,6))
-    # plt.plot(sample_name, RMSE_value,c='orange')
-    # plt.title(f"Root Mean Squared Error(RMSE) - {file_each}")
-    # plt.xlabel('Sample',fontsize=16)
-    # plt.show()
+    plt.figure(dpi=500,figsize=(10,6))
+    plt.plot(sample_name, cpu_time,c='blue')
+    plt.title(f"CPU Time - {file_each}")
+    plt.xlabel('Sample',fontsize=16)
+    plt.ylabel('Seconds',fontsize=16)
+    if not os.path.exists(f'./result_itself/{file_each}'):
+        os.makedirs(f'./result_itself/{file_each}')
+    plt.savefig(f'./result_itself_div/cpu_time/{file_each}_cpu_time.png')
+    plt.show()
+    
+    plt.figure(dpi=500,figsize=(10,6))
+    plt.plot(sample_name, RMSE_value,c='orange')
+    plt.title(f"Root Mean Squared Error(RMSE) - {file_each}")
+    if not os.path.exists(f'./result_itself/{file_each}'):
+        os.makedirs(f'./result_itself/{file_each}')
+    plt.savefig(f'./result_itself_div/RMSE_score/{file_each}_RMSE_score.png')
+    plt.xlabel('Sample',fontsize=16)
+    plt.show()
 
     # print(time_name)
     # print(sys_runtime)
     # print(user_runtime)
     # print(sample_name)
-    # csv_file = pd.read_csv(f"/Users/marshallyin/Downloads/Project/spotlight_result/{i}",header=0,index_col=0)
-    # # Vm_dif = pd.read_csv(i,)
-    # Vm_dif = csv_file.loc[['100% Sample'],['VmPeak','VmSize','VmLck','VmPin','VmHWM','VmRSS','VmData','VmStk','VmExe','VmLib','VmPTE','VmSwap']]
-    # print(list(Vm_dif)[1])
-    # Vm_name = ['VmPeak','VmSize','VmLck','VmPin','VmHWM','VmRSS','VmData','VmStk','VmExe','VmLib','VmPTE','VmSwap']
-    # Vm_value = []
-    # # for i in range(1,len(Vm_dif)):
-    # #     Vm_value.append(Vm_dif[i][1])
-    # # print(Vm_value)
